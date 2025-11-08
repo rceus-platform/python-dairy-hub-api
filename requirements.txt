@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+alembic
+pydantic[email]
+python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]
+psycopg2-binary    # for PostgreSQL (use sqlite3 if you prefer)
+python-multipart
+pydantic-settings
