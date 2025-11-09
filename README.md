@@ -1,7 +1,3 @@
-# python-dairy-hub-api
-
-Central place for all dairy operations.
-
 # Dairy Hub API Documentation
 
 Comprehensive API reference for managing milk collection, rate configuration, customers, billing, and reporting.
