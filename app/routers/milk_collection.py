@@ -67,16 +67,21 @@ def create_milk_collection(
 
     # Insert the milk collection record
     query = text("""
-        INSERT INTO public.milk_collection (
-            farmer_id, quantity, fat_content, snf_content,
-            rate_per_liter, total_amount, collection_date, shift
+        WITH inserted AS (
+            INSERT INTO public.milk_collection (
+                farmer_id, quantity, fat_content, snf_content,
+                rate_per_liter, total_amount, collection_date, shift
+            )
+            VALUES (
+                :farmer_id, :quantity, :fat_content, :snf_content,
+                :rate_per_liter, :total_amount, :collection_date, :shift
+            )
+            RETURNING id, farmer_id, quantity, fat_content, snf_content,
+                      rate_per_liter, total_amount, collection_date, shift, created_at
         )
-        VALUES (
-            :farmer_id, :quantity, :fat_content, :snf_content,
-            :rate_per_liter, :total_amount, :collection_date, :shift
-        )
-        RETURNING id, farmer_id, quantity, fat_content, snf_content,
-                  rate_per_liter, total_amount, collection_date, shift, created_at
+        SELECT i.*, c.name as farmer_name
+        FROM inserted i
+        JOIN public.customer c ON i.farmer_id = c.id
     """)
 
     try:
@@ -110,7 +115,7 @@ def get_milk_collections(
         SELECT 
             mc.id, mc.farmer_id, mc.quantity, mc.fat_content,
             mc.snf_content, mc.rate_per_liter, mc.total_amount,
-            mc.collection_date, mc.created_at,
+            mc.collection_date, mc.shift, mc.created_at,
             c.name as farmer_name
         FROM public.milk_collection mc
         JOIN public.customer c ON mc.farmer_id = c.id
@@ -186,42 +191,52 @@ def get_farmer_collection_summary(
                 AVG(mc.snf_content) as avg_snf,
                 SUM(mc.total_amount) as total_amount
             FROM public.milk_collection mc
-            WHERE 1=1
+            WHERE (:start_date IS NULL OR mc.collection_date >= :start_date)
+            AND (:end_date IS NULL OR mc.collection_date <= :end_date)
             GROUP BY mc.farmer_id, mc.shift
+        ),
+        farmer_totals AS (
+            SELECT 
+                mc.farmer_id,
+                COUNT(*) as total_collections,
+                SUM(mc.quantity) as total_quantity,
+                AVG(mc.fat_content) as avg_fat,
+                AVG(mc.snf_content) as avg_snf,
+                SUM(mc.total_amount) as total_amount
+            FROM public.milk_collection mc
+            WHERE (:start_date IS NULL OR mc.collection_date >= :start_date)
+            AND (:end_date IS NULL OR mc.collection_date <= :end_date)
+            GROUP BY mc.farmer_id
         )
         SELECT 
             c.id as farmer_id,
             c.name as farmer_name,
-            COUNT(*) as total_collections,
-            SUM(mc.quantity) as total_quantity,
-            AVG(mc.fat_content) as avg_fat,
-            AVG(mc.snf_content) as avg_snf,
-            SUM(mc.total_amount) as total_amount,
+            ft.total_collections,
+            ft.total_quantity,
+            ft.avg_fat,
+            ft.avg_snf,
+            ft.total_amount,
             jsonb_build_object(
                 'shift', 'morning',
-                'total_collections', morning.total_collections,
-                'total_quantity', morning.total_quantity,
-                'avg_fat', morning.avg_fat,
-                'avg_snf', morning.avg_snf,
-                'total_amount', morning.total_amount
+                'total_collections', COALESCE(morning.total_collections, 0),
+                'total_quantity', COALESCE(morning.total_quantity, 0.0),
+                'avg_fat', COALESCE(morning.avg_fat, 0.0),
+                'avg_snf', COALESCE(morning.avg_snf, 0.0),
+                'total_amount', COALESCE(morning.total_amount, 0.0)
             ) as morning_collections,
             jsonb_build_object(
                 'shift', 'evening',
-                'total_collections', evening.total_collections,
-                'total_quantity', evening.total_quantity,
-                'avg_fat', evening.avg_fat,
-                'avg_snf', evening.avg_snf,
-                'total_amount', evening.total_amount
+                'total_collections', COALESCE(evening.total_collections, 0),
+                'total_quantity', COALESCE(evening.total_quantity, 0.0),
+                'avg_fat', COALESCE(evening.avg_fat, 0.0),
+                'avg_snf', COALESCE(evening.avg_snf, 0.0),
+                'total_amount', COALESCE(evening.total_amount, 0.0)
             ) as evening_collections
-        FROM public.milk_collection mc
-        LEFT JOIN shift_summaries morning ON mc.farmer_id = morning.farmer_id AND morning.shift = 'morning'
-        LEFT JOIN shift_summaries evening ON mc.farmer_id = evening.farmer_id AND evening.shift = 'evening'
-        JOIN public.customer c ON mc.farmer_id = c.id
-        WHERE 
-            (:start_date IS NULL OR mc.collection_date >= :start_date)
-            AND (:end_date IS NULL OR mc.collection_date <= :end_date)
-        GROUP BY c.id, c.name
-        ORDER BY total_amount DESC
+        FROM public.customer c
+        JOIN farmer_totals ft ON c.id = ft.farmer_id
+        LEFT JOIN shift_summaries morning ON c.id = morning.farmer_id AND morning.shift = 'morning'
+        LEFT JOIN shift_summaries evening ON c.id = evening.farmer_id AND evening.shift = 'evening'
+        ORDER BY ft.total_amount DESC
     """)
 
     result = db.execute(query, {"start_date": start_date, "end_date": end_date})
@@ -234,16 +249,58 @@ def get_daily_collection_report(
 ):
     """Get daily collection report"""
     query = text("""
+        WITH daily_totals AS (
+            SELECT 
+                DATE(collection_date) as collection_date,
+                COUNT(DISTINCT farmer_id) as total_farmers,
+                SUM(quantity) as total_quantity,
+                AVG(fat_content) as avg_fat,
+                AVG(snf_content) as avg_snf,
+                SUM(total_amount) as total_amount
+            FROM public.milk_collection
+            WHERE DATE(collection_date) = COALESCE(:date, CURRENT_DATE)
+            GROUP BY DATE(collection_date)
+        ),
+        shift_totals AS (
+            SELECT 
+                DATE(collection_date) as collection_date,
+                shift,
+                COUNT(DISTINCT farmer_id) as total_farmers,
+                SUM(quantity) as total_quantity,
+                AVG(fat_content) as avg_fat,
+                AVG(snf_content) as avg_snf,
+                SUM(total_amount) as total_amount
+            FROM public.milk_collection
+            WHERE DATE(collection_date) = COALESCE(:date, CURRENT_DATE)
+            GROUP BY DATE(collection_date), shift
+        )
         SELECT 
-            DATE(mc.collection_date) as collection_date,
-            COUNT(DISTINCT mc.farmer_id) as total_farmers,
-            SUM(mc.quantity) as total_quantity,
-            AVG(mc.fat_content) as avg_fat,
-            AVG(mc.snf_content) as avg_snf,
-            SUM(mc.total_amount) as total_amount
-        FROM public.milk_collection mc
-        WHERE DATE(mc.collection_date) = COALESCE(:date, CURRENT_DATE)
-        GROUP BY DATE(mc.collection_date)
+            dt.collection_date,
+            dt.total_farmers,
+            dt.total_quantity,
+            dt.avg_fat,
+            dt.avg_snf,
+            dt.total_amount,
+            jsonb_build_object(
+                'shift', 'morning',
+                'total_farmers', COALESCE(morning.total_farmers, 0),
+                'total_quantity', COALESCE(morning.total_quantity, 0.0),
+                'avg_fat', COALESCE(morning.avg_fat, 0.0),
+                'avg_snf', COALESCE(morning.avg_snf, 0.0),
+                'total_amount', COALESCE(morning.total_amount, 0.0)
+            ) as morning_collection,
+            jsonb_build_object(
+                'shift', 'evening',
+                'total_farmers', COALESCE(evening.total_farmers, 0),
+                'total_quantity', COALESCE(evening.total_quantity, 0.0),
+                'avg_fat', COALESCE(evening.avg_fat, 0.0),
+                'avg_snf', COALESCE(evening.avg_snf, 0.0),
+                'total_amount', COALESCE(evening.total_amount, 0.0)
+            ) as evening_collection
+        FROM daily_totals dt
+        LEFT JOIN shift_totals morning ON dt.collection_date = morning.collection_date AND morning.shift = 'morning'
+        LEFT JOIN shift_totals evening ON dt.collection_date = evening.collection_date AND evening.shift = 'evening'
+        ORDER BY dt.collection_date
     """)
 
     result = db.execute(query, {"date": date})
@@ -295,20 +352,29 @@ def generate_collection_report(
     # Get overall summary
     summary_query = text(f"""
         SELECT 
-            COUNT(DISTINCT farmer_id) as total_farmers,
-            COUNT(*) as total_collections,
-            SUM(quantity) as total_quantity,
-            AVG(fat_content) as avg_fat,
-            AVG(snf_content) as avg_snf,
-            SUM(total_amount) as total_amount
+            COALESCE(COUNT(DISTINCT farmer_id), 0) as total_farmers,
+            COALESCE(COUNT(*), 0) as total_collections,
+            COALESCE(SUM(quantity), 0.0) as total_quantity,
+            COALESCE(AVG(fat_content), 0.0) as avg_fat,
+            COALESCE(AVG(snf_content), 0.0) as avg_snf,
+            COALESCE(SUM(total_amount), 0.0) as total_amount
         FROM public.milk_collection
         WHERE {where_clause}
     """)
 
-    summary = dict(
-        db.execute(
-            summary_query, {"start_date": start_date, "end_date": end_date}
-        ).first()
+    result = db.execute(summary_query, params).first()
+
+    summary = (
+        dict(result._mapping)
+        if result
+        else {
+            "total_farmers": 0,
+            "total_collections": 0,
+            "total_quantity": 0.0,
+            "avg_fat": 0.0,
+            "avg_snf": 0.0,
+            "total_amount": 0.0,
+        }
     )
 
     # Get shift-wise summary
@@ -325,9 +391,7 @@ def generate_collection_report(
         GROUP BY shift
     """)
 
-    shift_results = db.execute(
-        shift_query, {"start_date": start_date, "end_date": end_date}
-    ).fetchall()
+    shift_results = db.execute(shift_query, params).fetchall()
 
     shift_summary = {row.shift: dict(row._mapping) for row in shift_results}
 
@@ -357,7 +421,7 @@ def generate_collection_report(
                 AVG(snf_content) as avg_snf,
                 SUM(total_amount) as total_amount
             FROM public.milk_collection
-            WHERE DATE(collection_date) BETWEEN :start_date AND :end_date
+                WHERE {where_clause}
             GROUP BY DATE(collection_date), shift
         )
         SELECT 
@@ -368,40 +432,29 @@ def generate_collection_report(
             dt.avg_snf,
             dt.total_amount,
             jsonb_build_object(
-                'morning', (
-                    SELECT jsonb_build_object(
-                        'shift', 'morning',
-                        'total_farmers', st.total_farmers,
-                        'total_quantity', st.total_quantity,
-                        'avg_fat', st.avg_fat,
-                        'avg_snf', st.avg_snf,
-                        'total_amount', st.total_amount
-                    )
-                    FROM shift_totals st 
-                    WHERE st.collection_date = dt.collection_date AND st.shift = 'morning'
-                ),
-                'evening', (
-                    SELECT jsonb_build_object(
-                        'shift', 'evening',
-                        'total_farmers', st.total_farmers,
-                        'total_quantity', st.total_quantity,
-                        'avg_fat', st.avg_fat,
-                        'avg_snf', st.avg_snf,
-                        'total_amount', st.total_amount
-                    )
-                    FROM shift_totals st 
-                    WHERE st.collection_date = dt.collection_date AND st.shift = 'evening'
-                )
-            ) as shift_summary
+                'shift', 'morning',
+                'total_farmers', COALESCE(morning.total_farmers, 0),
+                'total_quantity', COALESCE(morning.total_quantity, 0.0),
+                'avg_fat', COALESCE(morning.avg_fat, 0.0),
+                'avg_snf', COALESCE(morning.avg_snf, 0.0),
+                'total_amount', COALESCE(morning.total_amount, 0.0)
+            ) as morning_collection,
+            jsonb_build_object(
+                'shift', 'evening',
+                'total_farmers', COALESCE(evening.total_farmers, 0),
+                'total_quantity', COALESCE(evening.total_quantity, 0.0),
+                'avg_fat', COALESCE(evening.avg_fat, 0.0),
+                'avg_snf', COALESCE(evening.avg_snf, 0.0),
+                'total_amount', COALESCE(evening.total_amount, 0.0)
+            ) as evening_collection
         FROM daily_totals dt
+        LEFT JOIN shift_totals morning ON dt.collection_date = morning.collection_date AND morning.shift = 'morning'
+        LEFT JOIN shift_totals evening ON dt.collection_date = evening.collection_date AND evening.shift = 'evening'
         ORDER BY dt.collection_date
-    """)
+        """)
 
-    daily_results = db.execute(
-        daily_query, {"start_date": start_date, "end_date": end_date}
-    ).fetchall()
-
-    daily_summaries = [dict(row._mapping) for row in daily_results]
+        daily_results = db.execute(daily_query, params).fetchall()
+        daily_summaries = [dict(row._mapping) for row in daily_results]
 
     return {
         **summary,

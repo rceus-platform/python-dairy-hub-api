@@ -22,4 +22,4 @@ class Customer(CustomerBase):
     is_active: bool = True
 
     class Config:
-        orm_mode = True
+        from_attributes = True

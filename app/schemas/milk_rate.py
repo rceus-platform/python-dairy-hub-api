@@ -40,7 +40,6 @@ class MilkRateUpdate(BaseModel):
 class MilkRate(MilkRateBase):
     id: int
     created_at: Optional[date] = None
-    is_active: bool
 
     @staticmethod
     def from_db(db_item):
@@ -62,10 +61,9 @@ class MilkRate(MilkRateBase):
             "effective_to": db_item.effective_to,
             "description": getattr(db_item, "description", None),
             "created_at": created_at,
-            "is_active": getattr(db_item, "is_active", True),
         }
 
         return MilkRate(**data)
 
     class Config:
-        orm_mode = True
+        from_attributes = True

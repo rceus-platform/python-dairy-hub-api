@@ -31,7 +31,7 @@ class MilkCollection(MilkCollectionBase):
     farmer_name: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ShiftWiseFarmerSummary(BaseModel):
@@ -43,7 +43,7 @@ class ShiftWiseFarmerSummary(BaseModel):
     total_amount: float
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class FarmerCollectionSummary(BaseModel):
@@ -58,7 +58,7 @@ class FarmerCollectionSummary(BaseModel):
     evening_collections: Optional[ShiftWiseFarmerSummary]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ShiftCollectionSummary(BaseModel):
@@ -70,7 +70,7 @@ class ShiftCollectionSummary(BaseModel):
     total_amount: float
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class DailyCollectionReport(BaseModel):
@@ -84,7 +84,7 @@ class DailyCollectionReport(BaseModel):
     total_amount: float
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class DateRangeReport(BaseModel):
@@ -100,7 +100,7 @@ class DateRangeReport(BaseModel):
     shift_wise_summary: dict[str, ShiftCollectionSummary]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class WeeklyReport(DateRangeReport):

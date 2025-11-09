@@ -22,7 +22,6 @@ def create_milk_rate(
         SELECT id FROM public.milk_rate_configuration
         WHERE (effective_from <= :effective_to OR :effective_to IS NULL)
         AND (effective_to >= :effective_from OR effective_to IS NULL)
-        AND is_active = TRUE
     """)
 
     params = {
@@ -33,7 +32,8 @@ def create_milk_rate(
     overlap = db.execute(overlap_query, params).first()
     if overlap:
         raise HTTPException(
-            status_code=400, detail="Date range overlaps with existing configuration"
+            status_code=400,
+            detail="A rate configuration already exists for this date range. Each date can only have one rate configuration.",
         )
 
     # Insert new rate configuration
@@ -47,7 +47,7 @@ def create_milk_rate(
             :effective_from, :effective_to, :description
         )
         RETURNING id, base_rate, fat_rate, snf_rate, base_fat, base_snf,
-                  effective_from, effective_to, description, created_at, is_active
+                  effective_from, effective_to, description, created_at
     """)
 
     try:
@@ -75,22 +75,18 @@ def create_milk_rate(
 @router.get("/", response_model=List[schemas.MilkRate])
 def get_milk_rates(
     date: Optional[date] = Query(None),
-    active_only: bool = Query(True),
     db: Session = Depends(get_db),
 ):
     """Get milk rate configurations"""
     query_parts = [
         """
         SELECT id, base_rate, fat_rate, snf_rate, base_fat, base_snf,
-               effective_from, effective_to, description, created_at, is_active
+               effective_from, effective_to, description, created_at
         FROM public.milk_rate_configuration
         WHERE 1=1
         """
     ]
     params = {}
-
-    if active_only:
-        query_parts.append("AND is_active = TRUE")
 
     if date:
         query_parts.append("""
@@ -109,14 +105,13 @@ def get_milk_rates(
 
 @router.get("/current", response_model=schemas.MilkRate)
 def get_current_rate(db: Session = Depends(get_db)):
-    """Get currently active milk rate configuration"""
+    """Get current milk rate configuration for today's date"""
     query = text("""
         SELECT id, base_rate, fat_rate, snf_rate, base_fat, base_snf,
-               effective_from, effective_to, description, created_at, is_active
+               effective_from, effective_to, description, created_at
         FROM public.milk_rate_configuration
         WHERE effective_from <= CURRENT_DATE
         AND (effective_to >= CURRENT_DATE OR effective_to IS NULL)
-        AND is_active = TRUE
         ORDER BY effective_from DESC
         LIMIT 1
     """)
@@ -130,15 +125,14 @@ def get_current_rate(db: Session = Depends(get_db)):
     return schemas.MilkRate.from_db(result)
 
 
-@router.patch("/{rate_id}/deactivate", response_model=schemas.MilkRate)
-def deactivate_rate(rate_id: int, db: Session = Depends(get_db)):
-    """Deactivate a milk rate configuration"""
+@router.delete("/{rate_id}", response_model=schemas.MilkRate)
+def delete_rate(rate_id: int, db: Session = Depends(get_db)):
+    """Delete a milk rate configuration"""
     query = text("""
-        UPDATE public.milk_rate_configuration
-        SET is_active = FALSE
+        DELETE FROM public.milk_rate_configuration
         WHERE id = :rate_id
         RETURNING id, base_rate, fat_rate, snf_rate, base_fat, base_snf,
-                  effective_from, effective_to, description, created_at, is_active
+                  effective_from, effective_to, description, created_at
     """)
 
     result = db.execute(query, {"rate_id": rate_id})
@@ -152,91 +146,45 @@ def deactivate_rate(rate_id: int, db: Session = Depends(get_db)):
     return schemas.MilkRate.from_db(rate)
 
 
-@router.put("/update-range", response_model=schemas.MilkRate)
+@router.put("/update-range")
 def update_rate_range(
     start_date: date,
     end_date: date,
     rate_update: schemas.MilkRateUpdate,
     db: Session = Depends(get_db),
 ):
-    """Update or create milk rate for a specific date range"""
+    """Update milk rate configurations within a date range"""
 
-    # First, check if there are any existing rates in this date range
-    overlap_query = text("""
-        SELECT id FROM public.milk_rate_configuration
-        WHERE effective_from <= :end_date
-        AND (effective_to >= :start_date OR effective_to IS NULL)
-        AND is_active = TRUE
-    """)
-
-    existing = db.execute(
-        overlap_query, {"start_date": start_date, "end_date": end_date}
-    ).fetchall()
-
-    if existing:
-        # Deactivate overlapping rates
-        deactivate_query = text("""
-            UPDATE public.milk_rate_configuration
-            SET is_active = FALSE
-            WHERE id = ANY(:rate_ids)
-        """)
-        db.execute(deactivate_query, {"rate_ids": [r[0] for r in existing]})
-
-    # Create new rate configuration
-    # Build the update fields dynamically based on what was provided
-    fields = []
-    params = {"effective_from": start_date, "effective_to": end_date}
+    # Build dynamic update SQL
+    update_fields = []
+    params = {
+        "start_date": start_date,
+        "end_date": end_date,
+    }
 
     for field, value in rate_update.dict(exclude_unset=True).items():
-        if value is not None:
-            fields.append(field)
-            params[field] = value
+        update_fields.append(f"{field} = :{field}")
+        params[field] = value
 
-    # Get the latest rate configuration for any missing fields
-    latest_query = text("""
-        SELECT base_rate, fat_rate, snf_rate, base_fat, base_snf
-        FROM public.milk_rate_configuration
-        WHERE is_active = TRUE
-        ORDER BY effective_from DESC
-        LIMIT 1
-    """)
-    latest_rate = db.execute(latest_query).first()
+    if not update_fields:
+        raise HTTPException(status_code=400, detail="No fields provided to update")
 
-    if latest_rate:
-        for field in ["base_rate", "fat_rate", "snf_rate", "base_fat", "base_snf"]:
-            if field not in params:
-                params[field] = getattr(latest_rate, field)
-    else:
-        # If no previous rate exists, use default values for missing fields
-        defaults = {
-            "base_rate": 40.0,
-            "fat_rate": 2.0,
-            "snf_rate": 1.0,
-            "base_fat": 3.5,
-            "base_snf": 8.5,
-        }
-        for field, default_value in defaults.items():
-            if field not in params:
-                params[field] = default_value
-
-    # Insert new rate configuration
-    insert_query = text("""
-        INSERT INTO public.milk_rate_configuration (
-            base_rate, fat_rate, snf_rate, base_fat, base_snf,
-            effective_from, effective_to, description
-        )
-        VALUES (
-            :base_rate, :fat_rate, :snf_rate, :base_fat, :base_snf,
-            :effective_from, :effective_to, :description
-        )
+    query = text(f"""
+        UPDATE public.milk_rate_configuration
+        SET {", ".join(update_fields)}
+        WHERE (effective_from BETWEEN :start_date AND :end_date)
+           OR (effective_to BETWEEN :start_date AND :end_date)
         RETURNING id, base_rate, fat_rate, snf_rate, base_fat, base_snf,
-                  effective_from, effective_to, description, created_at, is_active
+                  effective_from, effective_to, description, created_at
     """)
 
-    try:
-        result = db.execute(insert_query, params)
-        db.commit()
-        return schemas.MilkRate.from_db(result.first())
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+    result = db.execute(query, params)
+    db.commit()
+    updated = result.fetchall()
+
+    if not updated:
+        raise HTTPException(
+            status_code=404, detail="No configurations found in given range"
+        )
+
+    return [schemas.MilkRate.from_db(item) for item in updated]
