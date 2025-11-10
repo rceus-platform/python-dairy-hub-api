@@ -23,3 +23,12 @@ def read_root():
         "version": settings.VERSION,
         "message": "Welcome to the Dairy Hub API",
     }
+
+
+@app.get("/health")
+def health_check():
+    return {
+        "app_name": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "message": "API is healthy and running..",
+    }
