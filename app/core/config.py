@@ -14,7 +14,9 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "dairy_hub"
 
     # SQLAlchemy database URL
-    DATABASE_URL: str = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    # Default to a local SQLite file. You can override by setting the DATABASE_URL
+    # environment variable (for example: postgresql://...)
+    DATABASE_URL: str = f"sqlite:///./app/database/dairy_hub.db"
 
     class Config:
         case_sensitive = True

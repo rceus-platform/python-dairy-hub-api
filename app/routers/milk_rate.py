@@ -19,7 +19,7 @@ def create_milk_rate(
 
     # Check for overlapping date ranges
     overlap_query = text("""
-        SELECT id FROM public.milk_rate_configuration
+        SELECT id FROM milk_rate_configuration
         WHERE (effective_from <= :effective_to OR :effective_to IS NULL)
         AND (effective_to >= :effective_from OR effective_to IS NULL)
     """)
@@ -38,7 +38,7 @@ def create_milk_rate(
 
     # Insert new rate configuration
     query = text("""
-        INSERT INTO public.milk_rate_configuration (
+        INSERT INTO milk_rate_configuration (
             base_rate, fat_rate, snf_rate, base_fat, base_snf,
             effective_from, effective_to, description
         )
@@ -82,7 +82,7 @@ def get_milk_rates(
         """
         SELECT id, base_rate, fat_rate, snf_rate, base_fat, base_snf,
                effective_from, effective_to, description, created_at
-        FROM public.milk_rate_configuration
+        FROM milk_rate_configuration
         WHERE 1=1
         """
     ]
@@ -109,7 +109,7 @@ def get_current_rate(db: Session = Depends(get_db)):
     query = text("""
         SELECT id, base_rate, fat_rate, snf_rate, base_fat, base_snf,
                effective_from, effective_to, description, created_at
-        FROM public.milk_rate_configuration
+        FROM milk_rate_configuration
         WHERE effective_from <= CURRENT_DATE
         AND (effective_to >= CURRENT_DATE OR effective_to IS NULL)
         ORDER BY effective_from DESC
@@ -129,7 +129,7 @@ def get_current_rate(db: Session = Depends(get_db)):
 def delete_rate(rate_id: int, db: Session = Depends(get_db)):
     """Delete a milk rate configuration"""
     query = text("""
-        DELETE FROM public.milk_rate_configuration
+        DELETE FROM milk_rate_configuration
         WHERE id = :rate_id
         RETURNING id, base_rate, fat_rate, snf_rate, base_fat, base_snf,
                   effective_from, effective_to, description, created_at
@@ -170,7 +170,7 @@ def update_rate_range(
         raise HTTPException(status_code=400, detail="No fields provided to update")
 
     query = text(f"""
-        UPDATE public.milk_rate_configuration
+        UPDATE milk_rate_configuration
         SET {", ".join(update_fields)}
         WHERE (effective_from BETWEEN :start_date AND :end_date)
            OR (effective_to BETWEEN :start_date AND :end_date)

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dairy Hub - Admin Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 450px;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .emoji {
+            font-size: 32px;
+            margin-right: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: #bdc3c7;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-login:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-clear {
+            background: #ecf0f1;
+            color: #2c3e50;
+        }
+
+        .btn-clear:hover {
+            background: #d5dbdb;
+        }
+
+        .status-message {
+            margin-top: 20px;
+            padding: 12px 15px;
+            border-radius: 5px;
+            font-size: 13px;
+            text-align: center;
+            display: none;
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .status-message.success {
+            background: #d5f4e6;
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+
+        .status-message.error {
+            background: #fadbd8;
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+        }
+
+        .status-message.info {
+            background: #d6eaf8;
+            color: #3498db;
+            border: 1px solid #3498db;
+        }
+
+        .demo-credentials {
+            background: #f8f9f9;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 25px;
+            font-size: 12px;
+        }
+
+        .demo-credentials h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .demo-credentials p {
+            color: #34495e;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .demo-credentials p:last-child {
+            margin-bottom: 0;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .api-status {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ecf0f1;
+            text-align: center;
+        }
+
+        .api-status.connected {
+            color: #27ae60;
+        }
+
+        .api-status.disconnected {
+            color: #e74c3c;
+        }
+
+        .api-status span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .api-status.connected span {
+            background: #27ae60;
+        }
+
+        .api-status.disconnected span {
+            background: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><span class="emoji">🐄</span>Dairy Hub</h1>
+            <p>Admin Portal - Milk Collection & Management</p>
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    placeholder="Enter your username"
+                    autocomplete="username"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    placeholder="Enter your password"
+                    autocomplete="current-password"
+                    required
+                >
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="btn-login" id="loginBtn">
+                    Login
+                </button>
+                <button type="button" class="btn-clear" id="clearBtn">
+                    Clear
+                </button>
+            </div>
+
+            <div id="statusMessage" class="status-message"></div>
+        </form>
+
+        <div class="demo-credentials">
+            <h3>📋 Demo Credentials</h3>
+            <p><strong>Admin:</strong> admin / admin</p>
+            <p><strong>Manager:</strong> manager / secure_password</p>
+        </div>
+
+        <div class="api-status" id="apiStatus">
+            <span></span>Checking API connection...
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:8000';
+        const LOGIN_ENDPOINT = `${API_BASE_URL}/api/v1/auth/login`;
+
+        const form = document.getElementById('loginForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const apiStatus = document.getElementById('apiStatus');
+
+        // Check API connection on load
+        checkAPIConnection();
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await performLogin();
+        });
+
+        // Clear button
+        clearBtn.addEventListener('click', () => {
+            usernameInput.value = '';
+            passwordInput.value = '';
+            statusMessage.classList.remove('show');
+            usernameInput.focus();
+        });
+
+        // Allow Enter key in password field
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                form.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        async function checkAPIConnection() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                if (response.ok) {
+                    updateAPIStatus(true);
+                } else {
+                    updateAPIStatus(false);
+                }
+            } catch (error) {
+                updateAPIStatus(false);
+            }
+        }
+
+        function updateAPIStatus(isConnected) {
+            if (isConnected) {
+                apiStatus.className = 'api-status connected';
+                apiStatus.innerHTML = '<span></span>API Server: Connected';
+            } else {
+                apiStatus.className = 'api-status disconnected';
+                apiStatus.innerHTML = '<span></span>API Server: Disconnected';
+            }
+        }
+
+        async function performLogin() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!username || !password) {
+                showStatus('Please enter both username and password', 'error');
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span class="loading-spinner"></span>Logging in...';
+            showStatus('Logging in...', 'info');
+
+            try {
+                const response = await fetch(LOGIN_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    }),
+                    mode: 'cors'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showStatus(`✓ Login successful! Welcome ${username}`, 'success');
+                    usernameInput.value = '';
+                    passwordInput.value = '';
+                    
+                    // You can redirect or do something here
+                    setTimeout(() => {
+                        alert(`Welcome ${username}!\n\n${data.message}`);
+                    }, 500);
+                } else if (response.status === 401) {
+                    showStatus('✗ Invalid username or password', 'error');
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                } else {
+                    showStatus(`✗ Error: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                if (error instanceof TypeError) {
+                    showStatus('✗ Cannot connect to API server. Make sure it is running.', 'error');
+                } else {
+                    showStatus(`✗ Error: ${error.message}`, 'error');
+                }
+                console.error('Login error:', error);
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = 'Login';
+            }
+        }
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message show ${type}`;
+        }
+    </script>
+</body>
+</html>

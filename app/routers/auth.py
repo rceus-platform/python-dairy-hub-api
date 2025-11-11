@@ -12,7 +12,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 async def login(credentials: schemas.LoginRequest, db: Session = Depends(get_db)):
     # Query the admin table for the provided username and password
     query = text("""
-        SELECT username FROM public.admin 
+        SELECT username FROM admin 
         WHERE username = :username AND password = :password
     """)
     result = db.execute(

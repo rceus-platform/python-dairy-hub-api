@@ -34,7 +34,7 @@ def create_milk_collection(
     total_amount = collection.quantity * collection.rate_per_liter
 
     # Verify that the farmer exists
-    farmer_query = text("SELECT id FROM public.customer WHERE id = :farmer_id")
+    farmer_query = text("SELECT id FROM customer WHERE id = :farmer_id")
     farmer = db.execute(farmer_query, {"farmer_id": collection.farmer_id}).first()
 
     if not farmer:
@@ -44,7 +44,7 @@ def create_milk_collection(
 
     # Check if collection already exists for this farmer, date and shift
     existing_collection_query = text("""
-        SELECT id FROM public.milk_collection 
+        SELECT id FROM milk_collection 
         WHERE farmer_id = :farmer_id 
         AND DATE(collection_date) = DATE(:collection_date)
         AND shift = :shift
@@ -68,7 +68,7 @@ def create_milk_collection(
     # Insert the milk collection record
     query = text("""
         WITH inserted AS (
-            INSERT INTO public.milk_collection (
+            INSERT INTO milk_collection (
                 farmer_id, quantity, fat_content, snf_content,
                 rate_per_liter, total_amount, collection_date, shift
             )
@@ -81,7 +81,7 @@ def create_milk_collection(
         )
         SELECT i.*, c.name as farmer_name
         FROM inserted i
-        JOIN public.customer c ON i.farmer_id = c.id
+        JOIN customer c ON i.farmer_id = c.id
     """)
 
     try:

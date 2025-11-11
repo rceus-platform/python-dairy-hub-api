@@ -4,6 +4,38 @@ Comprehensive API reference for managing milk collection, rate configuration, cu
 
 ---
 
+## 🚀 Quick Start
+
+### Setup (PowerShell from repository root):
+```powershell
+# 1. Create virtual environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Initialize database
+python scripts/init_sqlite.py
+python scripts/seed_sqlite.py
+
+# 4. Start API server
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Access Admin Portal:
+- **Web UI:** http://127.0.0.1:8000/admin (recommended)
+- **Desktop GUI:** `python scripts/admin_login_ui.py` (in another terminal)
+- **API Docs:** http://127.0.0.1:8000/docs
+
+### Demo Credentials:
+```
+Username: admin       | Password: admin
+Username: manager     | Password: secure_password
+```
+
+---
+
 ## 🧭 Table of Contents
 
 1. [Overview](#overview)
