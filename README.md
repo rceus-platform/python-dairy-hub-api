@@ -1,448 +1,232 @@
-# Dairy Hub API Documentation
+🐄 Dairy Hub – Production-Grade README
 
-Comprehensive API reference for managing milk collection, rate configuration, customers, billing, and reporting.
+1. Overview
 
----
+Dairy Hub is a production-ready milk collection and billing system built with FastAPI and SQLite, designed for portability, offline friendliness, and multiple admin access modes. It supports web, desktop, and standalone Windows EXE usage without requiring Python on client machines.
 
-## 🚀 Quick Start
+The system is suitable for:
+• Small to medium dairy cooperatives
+• Local milk collection centers
+• Offline-first or low-infrastructure environments
 
-### Setup (PowerShell from repository root):
-```powershell
-# 1. Create virtual environment
+⸻
+
+2. Architecture
+
+High-Level Components
+
+Client (Browser / Desktop / EXE)
+↓ HTTP
+FastAPI Backend (Uvicorn)
+↓ ORM
+SQLite Database (file-based)
+
+Key Design Decisions
+• SQLite: Zero-config, portable, reliable
+• FastAPI: High-performance async backend
+• Multiple Admin UIs: Web, Python GUI, Windows EXE
+• Single-Binary Distribution: No Python needed for end users
+
+⸻
+
+3. Features
+
+Backend
+• FastAPI REST API
+• SQLAlchemy ORM
+• Health check endpoint
+• Modular routers
+
+Database
+• SQLite file database
+• Pre-seeded production-like data
+• Referential integrity
+
+Admin Access Options 1. Web Admin Portal (recommended) 2. Python Desktop GUI (developer use) 3. Standalone Windows EXE (end users)
+
+⸻
+
+4. Technology Stack
+
+Layer Technology
+Backend FastAPI, Python
+Database SQLite 3
+ORM SQLAlchemy
+Web UI HTML, CSS, JavaScript
+Desktop UI Tkinter
+Executable PyInstaller
+Server Uvicorn
+
+⸻
+
+5. Project Structure
+
+python-dairy-hub-api/
+├── app/
+│ ├── core/
+│ ├── routers/
+│ ├── schemas/
+│ ├── static/ # Web admin UI
+│ ├── database/ # SQLite DB
+│ └── main.py
+├── scripts/
+│ ├── init_sqlite.py # DB schema
+│ ├── seed_sqlite.py # Sample data
+│ ├── admin_login_ui.py # Desktop GUI
+│ └── build_exe.py # EXE builder
+├── dist/
+│ └── DairyHubAdminLogin.exe
+├── requirements.txt
+├── README.md
+├── SETUP_GUIDE.md
+└── EXE_BUILD_GUIDE.md
+
+⸻
+
+6. Quick Start (Development)
+
+6.1 Environment Setup
+
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-
-# 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Initialize database
+6.2 Database Initialization
+
 python scripts/init_sqlite.py
 python scripts/seed_sqlite.py
 
-# 4. Start API server
+6.3 Start API Server
+
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
 
-### Access Admin Portal:
-- **Web UI:** http://127.0.0.1:8000/admin (recommended)
-- **Desktop GUI:** `python scripts/admin_login_ui.py` (in another terminal)
-- **API Docs:** http://127.0.0.1:8000/docs
+⸻
 
-### Demo Credentials:
-```
-Username: admin       | Password: admin
-Username: manager     | Password: secure_password
-```
+7. Admin Access Methods
 
----
+7.1 Web Admin Portal (Recommended)
 
-## 🧭 Table of Contents
+http://127.0.0.1:8000/admin
 
-1. [Overview](#overview)
-2. [Authentication Endpoints](#authentication-endpoints)
-3. [Customer Endpoints](#customer-endpoints)
-4. [Milk Rate Endpoints](#milk-rate-endpoints)
-5. [Milk Collection Endpoints](#milk-collection-endpoints)
-6. [Billing Endpoints](#billing-endpoints)
-7. [Report and Filter Parameters](#report-and-filter-parameters)
-8. [Common Response Structures](#common-response-structures)
-9. [HTTP Status Codes](#http-status-codes)
+    •	No installation
+    •	Responsive
+    •	Production-ready
 
----
+7.2 Python Desktop GUI
 
-## Overview
+python scripts/admin_login_ui.py
 
-**Base URL:** `/api/v1`
+    •	For developers
+    •	Source visible
 
-All endpoints are grouped under the following prefixes:
+7.3 Windows Standalone EXE
 
-| Module          | Prefix             |
-| --------------- | ------------------ |
-| Authentication  | `/auth`            |
-| Customers       | `/customers`       |
-| Milk Rates      | `/milk-rates`      |
-| Milk Collection | `/milk-collection` |
-| Billing         | `/billing`         |
+dist\DairyHubAdminLogin.exe
 
----
+    •	No Python required
+    •	Single executable
+    •	Suitable for clients and staff
 
-## Authentication Endpoints
+⸻
 
-### 1. Login
+8. Demo Credentials
 
-**Endpoint:** `POST /auth/login`
+Username Password Role
+admin admin Administrator
+manager secure_password Manager
 
-**Request:**
+⸻
 
-```json
-{
-  "username": "admin",
-  "password": "secure_password"
-}
-```
+9. API Overview
 
-**Response:**
+Base URL
 
-```json
-{
-  "status": "success",
-  "message": "Login successful"
-}
-```
+/api/v1
 
----
+Core Modules
+• /auth
+• /customers
+• /milk-rates
+• /milk-collection
+• /billing
 
-## Customer Endpoints
+Swagger UI:
 
-### 1. Create Customer
+http://127.0.0.1:8000/docs
 
-**Endpoint:** `POST /customers/`
+⸻
 
-**Request:**
+10. Production Deployment
 
-```json
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "phone": "+1234567890",
-  "address": "123 Farm Road",
-  "customer_type": "farmer"
-}
-```
+Backend
 
-**Response:**
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 
-```json
-{
-  "id": 1,
-  "name": "John Doe",
-  "email": "john@example.com",
-  "phone": "+1234567890",
-  "address": "123 Farm Road",
-  "customer_type": "farmer",
-  "created_at": "2025-11-09T10:00:00",
-  "is_active": true
-}
-```
-
-### 2. List Customers
-
-**Endpoint:** `GET /customers/`
-
-Examples:
-
-```http
-GET /customers/?skip=0&limit=100
-GET /customers/?skip=20&limit=10
-```
-
----
-
-## Milk Rate Endpoints
-
-### 1. Create Milk Rate Configuration
-
-**Endpoint:** `POST /milk-rates/`
-
-```json
-{
-  "base_rate": 40.0,
-  "fat_rate": 2.0,
-  "snf_rate": 1.0,
-  "base_fat": 3.5,
-  "base_snf": 8.5,
-  "effective_from": "2025-11-01",
-  "effective_to": "2025-12-31",
-  "description": "Winter 2025 rates"
-}
-```
-
-### 2. List Milk Rates
-
-**Endpoint:** `GET /milk-rates/`
-
-```http
-GET /milk-rates/
-GET /milk-rates/?date=2025-11-09
-GET /milk-rates/?is_active=true
-```
-
-### 3. Get Current Rate
-
-**Endpoint:** `GET /milk-rates/current`
-
-```http
-GET /milk-rates/current
-```
-
-**Response:**
-
-```json
-{
-  "id": 1,
-  "base_rate": 40.0,
-  "fat_rate": 2.0,
-  "snf_rate": 1.0,
-  "base_fat": 3.5,
-  "base_snf": 8.5,
-  "effective_from": "2025-11-01",
-  "effective_to": "2025-12-31",
-  "description": "Current active rate",
-  "created_at": "2025-11-09T10:00:00",
-  "is_active": true
-}
-```
-
-### 4. Update Rate by Range
-
-**Endpoint:** `PUT /milk-rates/update-range?start_date=2025-11-01&end_date=2025-12-31`
-
-**Request:**
-
-```json
-{
-  "base_rate": 42.0,
-  "fat_rate": 2.5,
-  "snf_rate": 1.2,
-  "base_fat": 3.5,
-  "base_snf": 8.5,
-  "description": "Updated Winter 2025 rates"
-}
-```
+Client Distribution
+• Copy DairyHubAdminLogin.exe
+• Ensure API is reachable
+• No installation steps required
 
-**Response:**
+⸻
 
-```json
-{
-  "id": 2,
-  "base_rate": 42.0,
-  "fat_rate": 2.5,
-  "snf_rate": 1.2,
-  "base_fat": 3.5,
-  "base_snf": 8.5,
-  "effective_from": "2025-11-01",
-  "effective_to": "2025-12-31",
-  "description": "Updated Winter 2025 rates",
-  "created_at": "2025-11-09T10:00:00",
-  "is_active": true
-}
-```
+11. EXE Build Instructions
 
-### 5. Deactivate Rate
+python scripts/build_exe.py
 
-**Endpoint:** `PATCH /milk-rates/{rate_id}/deactivate`
+Build Output:
+• dist/DairyHubAdminLogin.exe
+• ~10–11 MB
+• Windows 64-bit
 
-```http
-PATCH /milk-rates/1/deactivate
-```
+⸻
 
-**Response:**
+12. Security Notes
+    • Credentials are plain for demo only
+    • Use password hashing (bcrypt) for production
+    • Use HTTPS in real deployments
+    • Do not ship hardcoded credentials
 
-```json
-{
-  "id": 1,
-  "base_rate": 40.0,
-  "fat_rate": 2.0,
-  "snf_rate": 1.0,
-  "base_fat": 3.5,
-  "base_snf": 8.5,
-  "effective_from": "2025-11-01",
-  "effective_to": "2025-12-31",
-  "description": "Winter 2025 rates",
-  "is_active": false
-}
-```
+⸻
 
----
+13. Troubleshooting
 
-## Milk Collection Endpoints
+API Not Reachable
+• Ensure server is running
+• Check firewall / port
+• Verify /health endpoint
 
-### 1. Create Milk Collection
+EXE Not Launching
+• Run via PowerShell
+• Check antivirus quarantine
+• Rebuild on target OS
 
-**Endpoint:** `POST /milk-collection/`
+⸻
 
-```json
-{
-  "farmer_id": 123,
-  "quantity": 25.5,
-  "fat_content": 4.2,
-  "snf_content": 8.8,
-  "rate_per_liter": 45.5,
-  "collection_date": "2025-11-09T08:30:00",
-  "shift": "morning"
-}
-```
+14. Database Backup
 
-### 2. List All Collections
+Copy-Item app/database/dairy_hub.db app/database/dairy_hub.db.backup
 
-**Endpoint:** `GET /milk-collection/`
+⸻
 
-```http
-GET /milk-collection/?skip=0&limit=100
-```
+15. Recommended Enhancements
+    • JWT authentication
+    • Role-based access control
+    • Password hashing
+    • PDF billing reports
+    • Audit logging
+    • Automated backups
 
-### 3. Filter Collections
+⸻
 
-**Endpoint:** `GET /milk-collection/filter/`
+16. Release Information
+    • Version: 1.0.0
+    • Status: Production Ready
+    • Platform: Windows / Cross-platform backend
 
-**Parameters:** `start_date`, `end_date`, `farmer_id`, `shift`
+⸻
 
-```http
-GET /milk-collection/filter/?start_date=2025-11-01&end_date=2025-11-09&shift=morning
-```
+17. Summary
 
-### 4. Farmer Summary
+Dairy Hub delivers a clean, deployable, production-grade system with minimal operational overhead. It is designed to run anywhere, distribute easily, and scale logically without infrastructure complexity.
 
-**Endpoint:** `GET /milk-collection/farmer-summary/`
-
-```http
-GET /milk-collection/farmer-summary/?start_date=2025-11-01&end_date=2025-11-09
-```
-
-### 5. Reports
-
-#### Daily Report
-
-```http
-GET /milk-collection/reports/daily/?date=2025-11-09
-```
-
-#### Weekly Report
-
-```http
-GET /milk-collection/weekly-report/?year=2025&week=45&include_daily=true
-```
-
-#### Monthly Report
-
-```http
-GET /milk-collection/monthly-report/?year=2025&month=11&include_daily=true
-```
-
-#### Date Range Report
-
-```http
-GET /milk-collection/date-range-report/?start_date=2025-11-01&end_date=2025-11-15
-```
-
-### 6. Rate Calculation
-
-**Endpoint:** `GET /milk-collection/calculate-rate/`
-
-```http
-GET /milk-collection/calculate-rate/?fat_content=4.2&snf_content=8.8
-```
-
-**Response Example:**
-
-```json
-{
-  "fat_content": 4.0,
-  "snf_content": 9.0,
-  "rate_per_liter": 50.0,
-  "calculation_breakdown": {
-    "base_rate": 40.0,
-    "fat_bonus": 10.0,
-    "snf_bonus": 5.0
-  }
-}
-```
-
----
-
-## Billing Endpoints
-
-### 1. Create Bill
-
-**Endpoint:** `POST /billing/`
-
-```json
-{
-  "farmer_id": 123,
-  "billing_period_start": "2025-11-01",
-  "billing_period_end": "2025-11-15",
-  "items": [
-    {
-      "collection_id": 1,
-      "quantity": 25.5,
-      "rate": 45.5,
-      "amount": 1160.25
-    }
-  ]
-}
-```
-
-### 2. List Bills
-
-**Endpoint:** `GET /billing/`
-
-```http
-GET /billing/?skip=0&limit=100
-```
-
----
-
-## Report and Filter Parameters
-
-| Parameter       | Type   | Description                |
-| --------------- | ------ | -------------------------- |
-| `start_date`    | date   | Start date (YYYY-MM-DD)    |
-| `end_date`      | date   | End date (YYYY-MM-DD)      |
-| `date`          | date   | Specific date              |
-| `skip`          | int    | Number of records to skip  |
-| `limit`         | int    | Max records per page       |
-| `farmer_id`     | int    | Filter by farmer ID        |
-| `shift`         | string | morning / evening          |
-| `include_daily` | bool   | Include daily breakdown    |
-| `year`          | int    | For weekly/monthly reports |
-| `month`         | int    | Month number (1-12)        |
-| `week`          | int    | Week number (1-53)         |
-
----
-
-## Common Response Structures
-
-### ✅ Success
-
-```json
-{
-  "status": "success",
-  "data": {}
-}
-```
-
-### ⚠️ Error
-
-```json
-{
-  "detail": "Error message"
-}
-```
-
-### ⚙️ Validation Error
-
-```json
-{
-  "detail": [
-    {
-      "loc": ["body", "field_name"],
-      "msg": "field required",
-      "type": "value_error.missing"
-    }
-  ]
-}
-```
-
----
-
-## HTTP Status Codes
-
-| Code | Meaning               |
-| ---- | --------------------- |
-| 200  | OK / Success          |
-| 201  | Created Successfully  |
-| 400  | Bad Request           |
-| 401  | Unauthorized          |
-| 404  | Not Found             |
-| 422  | Validation Error      |
-| 500  | Internal Server Error |
+Ready for real-world use.
