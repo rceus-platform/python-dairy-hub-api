@@ -1,0 +1,53 @@
+name: Create App on VM
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Provision app + secrets on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          envs: GITHUB_REPOSITORY,APP_SECRET_JSON_B64
+          script: |
+            set -e
+
+            APP_NAME="$(basename $GITHUB_REPOSITORY)"
+            APP_DIR="/opt/apps/$APP_NAME"
+            SECRET_PATH="/opt/secrets/${APP_NAME}.json"
+
+            echo "➡ Injecting secrets for $APP_NAME"
+
+            sudo mkdir -p /opt/secrets /opt/apps
+            sudo chown -R ubuntu:ubuntu /opt/apps
+
+            echo "$APP_SECRET_JSON_B64" \
+              | base64 --decode \
+              | sudo tee "$SECRET_PATH" > /dev/null
+
+            sudo chown ubuntu:ubuntu "$SECRET_PATH"
+            sudo chmod 600 "$SECRET_PATH"
+
+            echo "➡ Cloning repository"
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone "https://github.com/${GITHUB_REPOSITORY}" "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+
+            echo "➡ Making create_app.sh executable"
+            chmod +x codebuild/create_app.sh
+
+            echo "➡ Running repo-owned create_app.sh"
+            export APP_NAME
+            export APP_SECRET_PATH="$SECRET_PATH"
+
+            sudo -E bash codebuild/create_app.sh
+        env:
+          APP_SECRET_JSON_B64: ${{ secrets.APP_SECRET_JSON_B64 }}
