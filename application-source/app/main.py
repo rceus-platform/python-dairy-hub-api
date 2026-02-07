@@ -1,6 +1,9 @@
+"""FastAPI application entrypoint."""
+
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
 
 from app.core.config import settings
 from app.routers import auth, billing, customer, milk_collection, milk_rate
@@ -25,17 +28,19 @@ if static_dir.exists():
 
 @app.get("/")
 def read_root():
+    """Return basic metadata and navigation hints."""
     return {
         "app_name": settings.PROJECT_NAME,
         "version": settings.VERSION,
         "message": "Welcome to the Dairy Hub API",
         "admin_portal": "/admin",
-        "api_docs": "/docs"
+        "api_docs": "/docs",
     }
 
 
 @app.get("/health")
 def health_check():
+    """Return service health information."""
     return {
         "app_name": settings.PROJECT_NAME,
         "version": settings.VERSION,

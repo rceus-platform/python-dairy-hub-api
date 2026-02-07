@@ -1,0 +1,387 @@
+{
+  "info": {
+    "_postman_id": "f2f4a2bf-67c7-4a7d-9f0d-b8f3e48f5001",
+    "name": "Dairy Hub API",
+    "description": "Postman collection for Dairy Hub API endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8000" },
+    { "key": "apiPrefix", "value": "/api/v1" },
+    { "key": "farmerId", "value": "1" },
+    { "key": "rateId", "value": "1" },
+    { "key": "startDate", "value": "2026-02-01" },
+    { "key": "endDate", "value": "2026-02-07" },
+    { "key": "dateTimeStart", "value": "2026-02-01T00:00:00" },
+    { "key": "dateTimeEnd", "value": "2026-02-07T23:59:59" }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Root",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            }
+          }
+        },
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Farmer A\",\n  \"email\": \"farmer.a@example.com\",\n  \"phone\": \"+911234567890\",\n  \"address\": \"Village X\",\n  \"customer_type\": \"regular\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/customers/",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "customers", ""]
+            }
+          }
+        },
+        {
+          "name": "List Customers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/customers/?skip=0&limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "customers", ""],
+              "query": [
+                { "key": "skip", "value": "0" },
+                { "key": "limit", "value": "100" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Milk Rates",
+      "item": [
+        {
+          "name": "Create Milk Rate",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"base_rate\": 40,\n  \"fat_rate\": 2,\n  \"snf_rate\": 1,\n  \"base_fat\": 3.5,\n  \"base_snf\": 8.5,\n  \"effective_from\": \"2026-02-01\",\n  \"effective_to\": \"2026-02-28\",\n  \"description\": \"Feb 2026 rates\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-rates/",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-rates", ""]
+            }
+          }
+        },
+        {
+          "name": "List Milk Rates",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-rates/",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-rates", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Milk Rates By Date",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-rates/?date=2026-02-07",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-rates", ""],
+              "query": [
+                { "key": "date", "value": "2026-02-07" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Current Milk Rate",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-rates/current",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-rates", "current"]
+            }
+          }
+        },
+        {
+          "name": "Update Milk Rates In Date Range",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"base_rate\": 41.5,\n  \"description\": \"Updated in range\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-rates/update-range?start_date={{startDate}}&end_date={{endDate}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-rates", "update-range"],
+              "query": [
+                { "key": "start_date", "value": "{{startDate}}" },
+                { "key": "end_date", "value": "{{endDate}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Milk Rate",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-rates/{{rateId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-rates", "{{rateId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Milk Collection",
+      "item": [
+        {
+          "name": "Create Milk Collection",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"farmer_id\": {{farmerId}},\n  \"quantity\": 25.5,\n  \"fat_content\": 4.2,\n  \"snf_content\": 8.8,\n  \"rate_per_liter\": 45.5,\n  \"collection_date\": \"2026-02-07T08:30:00\",\n  \"shift\": \"morning\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-collection/",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-collection", ""]
+            }
+          }
+        },
+        {
+          "name": "List Milk Collections",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-collection/?skip=0&limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-collection", ""],
+              "query": [
+                { "key": "skip", "value": "0" },
+                { "key": "limit", "value": "100" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter Milk Collections",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-collection/filter/?start_date={{dateTimeStart}}&end_date={{dateTimeEnd}}&farmer_id={{farmerId}}&shift=morning",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-collection", "filter", ""],
+              "query": [
+                { "key": "start_date", "value": "{{dateTimeStart}}" },
+                { "key": "end_date", "value": "{{dateTimeEnd}}" },
+                { "key": "farmer_id", "value": "{{farmerId}}" },
+                { "key": "shift", "value": "morning" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Farmer Summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-collection/farmer-summary/?start_date={{dateTimeStart}}&end_date={{dateTimeEnd}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-collection", "farmer-summary", ""],
+              "query": [
+                { "key": "start_date", "value": "{{dateTimeStart}}" },
+                { "key": "end_date", "value": "{{dateTimeEnd}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Daily Report",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-collection/reports/daily/?date=2026-02-07",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-collection", "reports", "daily", ""],
+              "query": [
+                { "key": "date", "value": "2026-02-07" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Calculate Rate",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-collection/calculate-rate/?fat_content=4.2&snf_content=8.8",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-collection", "calculate-rate", ""],
+              "query": [
+                { "key": "fat_content", "value": "4.2" },
+                { "key": "snf_content", "value": "8.8" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Weekly Report",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-collection/weekly-report/?year=2026&week=6&include_daily=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-collection", "weekly-report", ""],
+              "query": [
+                { "key": "year", "value": "2026" },
+                { "key": "week", "value": "6" },
+                { "key": "include_daily", "value": "true" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Monthly Report",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-collection/monthly-report/?year=2026&month=2&include_daily=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-collection", "monthly-report", ""],
+              "query": [
+                { "key": "year", "value": "2026" },
+                { "key": "month", "value": "2" },
+                { "key": "include_daily", "value": "true" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Date Range Report",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/milk-collection/date-range-report/?start_date={{startDate}}&end_date={{endDate}}&include_daily=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "milk-collection", "date-range-report", ""],
+              "query": [
+                { "key": "start_date", "value": "{{startDate}}" },
+                { "key": "end_date", "value": "{{endDate}}" },
+                { "key": "include_daily", "value": "true" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Billing (Not Implemented)",
+      "item": [
+        {
+          "name": "Create Bill (placeholder)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": 1,\n  \"bill_date\": \"2026-02-07T10:00:00\",\n  \"due_date\": \"2026-02-15T10:00:00\",\n  \"total_amount\": 1000,\n  \"status\": \"pending\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/billing/",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "billing", ""]
+            },
+            "description": "Handler currently has pass in code and is not implemented."
+          }
+        },
+        {
+          "name": "List Bills (placeholder)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/billing/?skip=0&limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "billing", ""],
+              "query": [
+                { "key": "skip", "value": "0" },
+                { "key": "limit", "value": "100" }
+              ]
+            },
+            "description": "Handler currently has pass in code and is not implemented."
+          }
+        }
+      ]
+    }
+  ]
+}

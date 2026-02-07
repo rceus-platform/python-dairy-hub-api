@@ -1,7 +1,9 @@
-from datetime import date
+"""Milk rate schemas."""
+
+from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MilkRateBase(BaseModel):
@@ -45,7 +47,14 @@ class MilkRate(MilkRateBase):
     def from_db(db_item):
         # Convert datetime to date for created_at
         if hasattr(db_item, "created_at") and db_item.created_at:
-            created_at = db_item.created_at.date()
+            if isinstance(db_item.created_at, datetime):
+                created_at = db_item.created_at.date()
+            elif isinstance(db_item.created_at, str):
+                created_at = datetime.fromisoformat(
+                    db_item.created_at.replace("Z", "+00:00")
+                ).date()
+            else:
+                created_at = None
         else:
             created_at = None
 
@@ -65,5 +74,4 @@ class MilkRate(MilkRateBase):
 
         return MilkRate(**data)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

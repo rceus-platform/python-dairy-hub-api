@@ -1,5 +1,8 @@
+"""Milk collection and reporting endpoints."""
+
+import json
 from datetime import date, datetime
-from typing import List, Optional
+from typing import Any, List, Mapping, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
@@ -7,8 +10,19 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.schemas import milk_collection as schemas
+from app.utils.date_utils import get_month_dates, get_week_dates
 
 router = APIRouter(prefix="/milk-collection", tags=["Milk Collection"])
+
+
+def parse_json_columns(row: Mapping[Any, Any], *columns: str) -> dict[str, Any]:
+    """Parse JSON string columns returned by SQLite json_object calls."""
+    data = {str(key): value for key, value in row.items()}
+    for column in columns:
+        value = data.get(column)
+        if isinstance(value, str):
+            data[column] = json.loads(value)
+    return data
 
 
 def calculate_rate_per_liter(fat_content: float, snf_content: float) -> float:
@@ -62,12 +76,14 @@ def create_milk_collection(
     if existing:
         raise HTTPException(
             status_code=400,
-            detail=f"Collection already exists for farmer {collection.farmer_id} on {collection.collection_date.date()} for {collection.shift} shift",
+            detail=(
+                f"Collection already exists for farmer {collection.farmer_id} on "
+                f"{collection.collection_date.date()} for {collection.shift} shift"
+            ),
         )
 
-    # Insert the milk collection record
-    query = text("""
-        WITH inserted AS (
+    try:
+        insert_query = text("""
             INSERT INTO milk_collection (
                 farmer_id, quantity, fat_content, snf_content,
                 rate_per_liter, total_amount, collection_date, shift
@@ -76,17 +92,9 @@ def create_milk_collection(
                 :farmer_id, :quantity, :fat_content, :snf_content,
                 :rate_per_liter, :total_amount, :collection_date, :shift
             )
-            RETURNING id, farmer_id, quantity, fat_content, snf_content,
-                      rate_per_liter, total_amount, collection_date, shift, created_at
-        )
-        SELECT i.*, c.name as farmer_name
-        FROM inserted i
-        JOIN customer c ON i.farmer_id = c.id
-    """)
-
-    try:
-        result = db.execute(
-            query,
+        """)
+        db.execute(
+            insert_query,
             {
                 "farmer_id": collection.farmer_id,
                 "quantity": collection.quantity,
@@ -98,11 +106,30 @@ def create_milk_collection(
                 "shift": collection.shift,
             },
         )
+        last_inserted = db.execute(
+            text("SELECT last_insert_rowid() as id")
+        ).mappings().first()
+        if not last_inserted:
+            raise HTTPException(
+                status_code=500, detail="Failed to resolve inserted collection id"
+            )
+        created_id = last_inserted["id"]
+        fetch_query = text("""
+            SELECT 
+                mc.id, mc.farmer_id, mc.quantity, mc.fat_content,
+                mc.snf_content, mc.rate_per_liter, mc.total_amount,
+                mc.collection_date, mc.shift, mc.created_at,
+                c.name as farmer_name
+            FROM milk_collection mc
+            JOIN customer c ON mc.farmer_id = c.id
+            WHERE mc.id = :id
+        """)
+        created_row = db.execute(fetch_query, {"id": created_id}).mappings().first()
         db.commit()
-        return result.first()
+        return created_row
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/", response_model=List[schemas.MilkCollection])
@@ -117,8 +144,8 @@ def get_milk_collections(
             mc.snf_content, mc.rate_per_liter, mc.total_amount,
             mc.collection_date, mc.shift, mc.created_at,
             c.name as farmer_name
-        FROM public.milk_collection mc
-        JOIN public.customer c ON mc.farmer_id = c.id
+        FROM milk_collection mc
+        JOIN customer c ON mc.farmer_id = c.id
         ORDER BY mc.collection_date DESC
         LIMIT :limit OFFSET :skip
     """)
@@ -143,8 +170,8 @@ def filter_milk_collections(
             mc.snf_content, mc.rate_per_liter, mc.total_amount,
             mc.collection_date, mc.shift, mc.created_at,
             c.name as farmer_name
-        FROM public.milk_collection mc
-        JOIN public.customer c ON mc.farmer_id = c.id
+        FROM milk_collection mc
+        JOIN customer c ON mc.farmer_id = c.id
         WHERE 1=1
         """
     ]
@@ -190,7 +217,7 @@ def get_farmer_collection_summary(
                 AVG(mc.fat_content) as avg_fat,
                 AVG(mc.snf_content) as avg_snf,
                 SUM(mc.total_amount) as total_amount
-            FROM public.milk_collection mc
+            FROM milk_collection mc
             WHERE (:start_date IS NULL OR mc.collection_date >= :start_date)
             AND (:end_date IS NULL OR mc.collection_date <= :end_date)
             GROUP BY mc.farmer_id, mc.shift
@@ -203,7 +230,7 @@ def get_farmer_collection_summary(
                 AVG(mc.fat_content) as avg_fat,
                 AVG(mc.snf_content) as avg_snf,
                 SUM(mc.total_amount) as total_amount
-            FROM public.milk_collection mc
+            FROM milk_collection mc
             WHERE (:start_date IS NULL OR mc.collection_date >= :start_date)
             AND (:end_date IS NULL OR mc.collection_date <= :end_date)
             GROUP BY mc.farmer_id
@@ -216,7 +243,7 @@ def get_farmer_collection_summary(
             ft.avg_fat,
             ft.avg_snf,
             ft.total_amount,
-            jsonb_build_object(
+            json_object(
                 'shift', 'morning',
                 'total_collections', COALESCE(morning.total_collections, 0),
                 'total_quantity', COALESCE(morning.total_quantity, 0.0),
@@ -224,7 +251,7 @@ def get_farmer_collection_summary(
                 'avg_snf', COALESCE(morning.avg_snf, 0.0),
                 'total_amount', COALESCE(morning.total_amount, 0.0)
             ) as morning_collections,
-            jsonb_build_object(
+            json_object(
                 'shift', 'evening',
                 'total_collections', COALESCE(evening.total_collections, 0),
                 'total_quantity', COALESCE(evening.total_quantity, 0.0),
@@ -232,7 +259,7 @@ def get_farmer_collection_summary(
                 'avg_snf', COALESCE(evening.avg_snf, 0.0),
                 'total_amount', COALESCE(evening.total_amount, 0.0)
             ) as evening_collections
-        FROM public.customer c
+        FROM customer c
         JOIN farmer_totals ft ON c.id = ft.farmer_id
         LEFT JOIN shift_summaries morning ON c.id = morning.farmer_id AND morning.shift = 'morning'
         LEFT JOIN shift_summaries evening ON c.id = evening.farmer_id AND evening.shift = 'evening'
@@ -240,12 +267,16 @@ def get_farmer_collection_summary(
     """)
 
     result = db.execute(query, {"start_date": start_date, "end_date": end_date})
-    return result.fetchall()
+    rows = result.mappings().all()
+    return [
+        parse_json_columns(row, "morning_collections", "evening_collections")
+        for row in rows
+    ]
 
 
 @router.get("/reports/daily/", response_model=List[schemas.DailyCollectionReport])
 def get_daily_collection_report(
-    date: date = Query(None), db: Session = Depends(get_db)
+    report_date: date = Query(None, alias="date"), db: Session = Depends(get_db)
 ):
     """Get daily collection report"""
     query = text("""
@@ -257,7 +288,7 @@ def get_daily_collection_report(
                 AVG(fat_content) as avg_fat,
                 AVG(snf_content) as avg_snf,
                 SUM(total_amount) as total_amount
-            FROM public.milk_collection
+            FROM milk_collection
             WHERE DATE(collection_date) = COALESCE(:date, CURRENT_DATE)
             GROUP BY DATE(collection_date)
         ),
@@ -270,7 +301,7 @@ def get_daily_collection_report(
                 AVG(fat_content) as avg_fat,
                 AVG(snf_content) as avg_snf,
                 SUM(total_amount) as total_amount
-            FROM public.milk_collection
+            FROM milk_collection
             WHERE DATE(collection_date) = COALESCE(:date, CURRENT_DATE)
             GROUP BY DATE(collection_date), shift
         )
@@ -281,7 +312,7 @@ def get_daily_collection_report(
             dt.avg_fat,
             dt.avg_snf,
             dt.total_amount,
-            jsonb_build_object(
+            json_object(
                 'shift', 'morning',
                 'total_farmers', COALESCE(morning.total_farmers, 0),
                 'total_quantity', COALESCE(morning.total_quantity, 0.0),
@@ -289,7 +320,7 @@ def get_daily_collection_report(
                 'avg_snf', COALESCE(morning.avg_snf, 0.0),
                 'total_amount', COALESCE(morning.total_amount, 0.0)
             ) as morning_collection,
-            jsonb_build_object(
+            json_object(
                 'shift', 'evening',
                 'total_farmers', COALESCE(evening.total_farmers, 0),
                 'total_quantity', COALESCE(evening.total_quantity, 0.0),
@@ -303,8 +334,12 @@ def get_daily_collection_report(
         ORDER BY dt.collection_date
     """)
 
-    result = db.execute(query, {"date": date})
-    return result.fetchall()
+    result = db.execute(query, {"date": report_date})
+    rows = result.mappings().all()
+    return [
+        parse_json_columns(row, "morning_collection", "evening_collection")
+        for row in rows
+    ]
 
 
 @router.get("/calculate-rate/")
@@ -326,7 +361,7 @@ def calculate_milk_rate(
     }
 
 
-def generate_collection_report(
+def generate_collection_report(  # pylint: disable=too-many-arguments,too-many-locals
     db: Session,
     start_date: date,
     end_date: date,
@@ -337,7 +372,7 @@ def generate_collection_report(
     """Generate a collection report for a date range"""
     # Base conditions for all queries
     where_conditions = ["DATE(collection_date) BETWEEN :start_date AND :end_date"]
-    params = {"start_date": start_date, "end_date": end_date}
+    params: dict[str, Any] = {"start_date": start_date, "end_date": end_date}
 
     if farmer_id:
         where_conditions.append("farmer_id = :farmer_id")
@@ -358,14 +393,14 @@ def generate_collection_report(
             COALESCE(AVG(fat_content), 0.0) as avg_fat,
             COALESCE(AVG(snf_content), 0.0) as avg_snf,
             COALESCE(SUM(total_amount), 0.0) as total_amount
-        FROM public.milk_collection
+        FROM milk_collection
         WHERE {where_clause}
     """)
 
-    result = db.execute(summary_query, params).first()
+    result = db.execute(summary_query, params).mappings().first()
 
     summary = (
-        dict(result._mapping)
+        dict(result)
         if result
         else {
             "total_farmers": 0,
@@ -386,14 +421,14 @@ def generate_collection_report(
             AVG(fat_content) as avg_fat,
             AVG(snf_content) as avg_snf,
             SUM(total_amount) as total_amount
-        FROM public.milk_collection
+        FROM milk_collection
         WHERE {where_clause}
         GROUP BY shift
     """)
 
-    shift_results = db.execute(shift_query, params).fetchall()
+    shift_results = db.execute(shift_query, params).mappings().all()
 
-    shift_summary = {row.shift: dict(row._mapping) for row in shift_results}
+    shift_summary = {row["shift"]: dict(row) for row in shift_results}
 
     # Get daily summaries if requested
     daily_summaries = []
@@ -407,7 +442,7 @@ def generate_collection_report(
                     AVG(fat_content) as avg_fat,
                     AVG(snf_content) as avg_snf,
                     SUM(total_amount) as total_amount
-                FROM public.milk_collection
+                FROM milk_collection
                 WHERE {where_clause}
             GROUP BY DATE(collection_date)
         ),
@@ -420,7 +455,7 @@ def generate_collection_report(
                 AVG(fat_content) as avg_fat,
                 AVG(snf_content) as avg_snf,
                 SUM(total_amount) as total_amount
-            FROM public.milk_collection
+            FROM milk_collection
                 WHERE {where_clause}
             GROUP BY DATE(collection_date), shift
         )
@@ -431,7 +466,7 @@ def generate_collection_report(
             dt.avg_fat,
             dt.avg_snf,
             dt.total_amount,
-            jsonb_build_object(
+            json_object(
                 'shift', 'morning',
                 'total_farmers', COALESCE(morning.total_farmers, 0),
                 'total_quantity', COALESCE(morning.total_quantity, 0.0),
@@ -439,7 +474,7 @@ def generate_collection_report(
                 'avg_snf', COALESCE(morning.avg_snf, 0.0),
                 'total_amount', COALESCE(morning.total_amount, 0.0)
             ) as morning_collection,
-            jsonb_build_object(
+            json_object(
                 'shift', 'evening',
                 'total_farmers', COALESCE(evening.total_farmers, 0),
                 'total_quantity', COALESCE(evening.total_quantity, 0.0),
@@ -453,8 +488,11 @@ def generate_collection_report(
         ORDER BY dt.collection_date
         """)
 
-        daily_results = db.execute(daily_query, params).fetchall()
-        daily_summaries = [dict(row._mapping) for row in daily_results]
+        daily_results = db.execute(daily_query, params).mappings().all()
+        daily_summaries = [
+            parse_json_columns(row, "morning_collection", "evening_collection")
+            for row in daily_results
+        ]
 
     return {
         **summary,
@@ -466,7 +504,7 @@ def generate_collection_report(
 
 
 @router.get("/weekly-report/", response_model=schemas.WeeklyReport)
-def get_weekly_report(
+def get_weekly_report(  # pylint: disable=too-many-arguments
     year: int = Query(..., description="Year for the report"),
     week: int = Query(..., ge=1, le=53, description="Week number (1-53)"),
     farmer_id: Optional[int] = Query(None, description="Filter by specific farmer"),
@@ -477,7 +515,6 @@ def get_weekly_report(
     db: Session = Depends(get_db),
 ):
     """Get milk collection report for a specific week"""
-    from app.utils.date_utils import get_week_dates
 
     start_date, end_date = get_week_dates(year, week)
     report_data = generate_collection_report(
@@ -497,7 +534,7 @@ def get_weekly_report(
 
 
 @router.get("/monthly-report/", response_model=schemas.MonthlyReport)
-def get_monthly_report(
+def get_monthly_report(  # pylint: disable=too-many-arguments
     year: int = Query(..., description="Year for the report"),
     month: int = Query(..., ge=1, le=12, description="Month number (1-12)"),
     farmer_id: Optional[int] = Query(None, description="Filter by specific farmer"),
@@ -508,7 +545,6 @@ def get_monthly_report(
     db: Session = Depends(get_db),
 ):
     """Get milk collection report for a specific month"""
-    from app.utils.date_utils import get_month_dates
 
     start_date, end_date = get_month_dates(year, month)
     report_data = generate_collection_report(
@@ -528,7 +564,7 @@ def get_monthly_report(
 
 
 @router.get("/date-range-report/", response_model=schemas.DateRangeReport)
-def get_date_range_report(
+def get_date_range_report(  # pylint: disable=too-many-arguments
     start_date: date = Query(..., description="Start date for the report"),
     end_date: date = Query(..., description="End date for the report"),
     farmer_id: Optional[int] = Query(None, description="Filter by specific farmer"),

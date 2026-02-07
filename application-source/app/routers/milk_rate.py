@@ -1,3 +1,5 @@
+"""Milk rate management endpoints."""
+
 from datetime import date
 from typing import List, Optional
 
@@ -33,7 +35,10 @@ def create_milk_rate(
     if overlap:
         raise HTTPException(
             status_code=400,
-            detail="A rate configuration already exists for this date range. Each date can only have one rate configuration.",
+            detail=(
+                "A rate configuration already exists for this date range. "
+                "Each date can only have one rate configuration."
+            ),
         )
 
     # Insert new rate configuration
@@ -64,17 +69,17 @@ def create_milk_rate(
                 "description": rate_config.description,
             },
         )
-        db.commit()
         db_item = result.first()
+        db.commit()
         return schemas.MilkRate.from_db(db_item)
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/", response_model=List[schemas.MilkRate])
 def get_milk_rates(
-    date: Optional[date] = Query(None),
+    for_date: Optional[date] = Query(None, alias="date"),
     db: Session = Depends(get_db),
 ):
     """Get milk rate configurations"""
@@ -88,12 +93,12 @@ def get_milk_rates(
     ]
     params = {}
 
-    if date:
+    if for_date:
         query_parts.append("""
             AND effective_from <= :date
             AND (effective_to >= :date OR effective_to IS NULL)
         """)
-        params["date"] = date
+        params["date"] = for_date
 
     query_parts.append("ORDER BY effective_from DESC")
     query = text(" ".join(query_parts))
@@ -136,9 +141,9 @@ def delete_rate(rate_id: int, db: Session = Depends(get_db)):
     """)
 
     result = db.execute(query, {"rate_id": rate_id})
-    db.commit()
-
+    # SQLite requires consuming RETURNING rows before commit.
     rate = result.first()
+    db.commit()
     if not rate:
         raise HTTPException(
             status_code=404, detail=f"Rate configuration with id {rate_id} not found"
@@ -162,7 +167,7 @@ def update_rate_range(
         "end_date": end_date,
     }
 
-    for field, value in rate_update.dict(exclude_unset=True).items():
+    for field, value in rate_update.model_dump(exclude_unset=True).items():
         update_fields.append(f"{field} = :{field}")
         params[field] = value
 
@@ -179,8 +184,9 @@ def update_rate_range(
     """)
 
     result = db.execute(query, params)
-    db.commit()
+    # SQLite requires consuming RETURNING rows before commit.
     updated = result.fetchall()
+    db.commit()
 
     if not updated:
         raise HTTPException(

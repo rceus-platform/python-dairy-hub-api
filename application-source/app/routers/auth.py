@@ -1,3 +1,5 @@
+"""Authentication endpoints."""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -10,6 +12,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/login")
 async def login(credentials: schemas.LoginRequest, db: Session = Depends(get_db)):
+    """Validate admin credentials against the admin table."""
     # Query the admin table for the provided username and password
     query = text("""
         SELECT username FROM admin 

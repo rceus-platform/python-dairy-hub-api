@@ -1,3 +1,5 @@
+"""Customer management endpoints."""
+
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,24 +18,28 @@ def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_
 
     # Insert the customer and return the created record
     query = text("""
-        INSERT INTO public.customer (name, email, phone, address, customer_type)
+        INSERT INTO customer (name, email, phone, address, customer_type)
         VALUES (:name, :email, :phone, :address, :customer_type)
         RETURNING id, name, email, phone, address, customer_type, created_at, is_active
     """)
 
-    result = db.execute(
-        query,
-        {
-            "name": customer.name,
-            "email": customer.email,
-            "phone": customer.phone,
-            "address": customer.address,
-            "customer_type": customer.customer_type,
-        },
-    )
-
-    db.commit()
-    customer_data = result.first()
+    try:
+        result = db.execute(
+            query,
+            {
+                "name": customer.name,
+                "email": customer.email,
+                "phone": customer.phone,
+                "address": customer.address,
+                "customer_type": customer.customer_type,
+            },
+        )
+        # SQLite requires consuming RETURNING rows before commit.
+        customer_data = result.first()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     if not customer_data:
         raise HTTPException(status_code=400, detail="Failed to create customer")
@@ -47,7 +53,7 @@ def get_customers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 
     query = text("""
         SELECT id, name, email, phone, address, customer_type, created_at, is_active
-        FROM public.customer
+        FROM customer
         ORDER BY id
         LIMIT :limit OFFSET :skip
     """)

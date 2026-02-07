@@ -1,7 +1,9 @@
-from datetime import datetime
-from typing import List, Optional
+"""Billing schemas."""
 
-from pydantic import BaseModel
+from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict
 
 
 class BillBase(BaseModel):
@@ -22,5 +24,4 @@ class Bill(BillBase):
     paid_amount: Optional[float] = None
     payment_date: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

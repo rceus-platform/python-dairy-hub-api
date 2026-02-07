@@ -1,3 +1,5 @@
+"""Authentication schemas."""
+
 from pydantic import BaseModel
 
 

@@ -1,7 +1,10 @@
-from pydantic_settings import BaseSettings
+"""Application configuration."""
 
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+    """Environment-driven application settings."""
+
     PROJECT_NAME: str = "Dairy Hub API"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
@@ -16,10 +19,9 @@ class Settings(BaseSettings):
     # SQLAlchemy database URL
     # Default to a local SQLite file. You can override by setting the DATABASE_URL
     # environment variable (for example: postgresql://...)
-    DATABASE_URL: str = f"sqlite:///./app/database/dairy_hub.db"
+    DATABASE_URL: str = "sqlite:///./app/database/dairy_hub.db"
 
-    class Config:
-        case_sensitive = True
+    model_config = SettingsConfigDict(case_sensitive=True)
 
 
 settings = Settings()

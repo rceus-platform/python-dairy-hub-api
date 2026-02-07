@@ -1,8 +1,10 @@
+"""Milk collection schemas."""
+
 from datetime import date, datetime
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CollectionShift(str, Enum):
@@ -30,8 +32,7 @@ class MilkCollection(MilkCollectionBase):
     created_at: datetime
     farmer_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ShiftWiseFarmerSummary(BaseModel):
@@ -42,8 +43,7 @@ class ShiftWiseFarmerSummary(BaseModel):
     avg_snf: float
     total_amount: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FarmerCollectionSummary(BaseModel):
@@ -57,8 +57,7 @@ class FarmerCollectionSummary(BaseModel):
     morning_collections: Optional[ShiftWiseFarmerSummary]
     evening_collections: Optional[ShiftWiseFarmerSummary]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ShiftCollectionSummary(BaseModel):
@@ -69,8 +68,7 @@ class ShiftCollectionSummary(BaseModel):
     avg_snf: float
     total_amount: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DailyCollectionReport(BaseModel):
@@ -83,8 +81,7 @@ class DailyCollectionReport(BaseModel):
     avg_snf: float
     total_amount: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DateRangeReport(BaseModel):
@@ -99,8 +96,7 @@ class DateRangeReport(BaseModel):
     daily_summaries: List[DailyCollectionReport]
     shift_wise_summary: dict[str, ShiftCollectionSummary]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WeeklyReport(DateRangeReport):
