@@ -53,16 +53,12 @@ chmod -R u+rwX,g+rwX "$APP_WORKDIR"
 if [ "$RUNTIME" = "python" ]; then
   echo "🐍 Python setup"
 
-  if [ ! -d ".venv" ]; then
-    sudo -u "$DEPLOY_USER" python3 -m venv .venv
-  fi
+  echo "Syncing dependencies with uv..."
+  sudo -u "$DEPLOY_USER" uv sync
 
-  sudo -u "$DEPLOY_USER" .venv/bin/pip install --upgrade pip
-  sudo -u "$DEPLOY_USER" .venv/bin/pip install -r requirements.txt
-
-  if [ -f manage.py ]; then
-    echo "🗄️ Running Django migrations"
-    sudo -u "$DEPLOY_USER" .venv/bin/python manage.py migrate --noinput
+  if [ -f "scripts/init_sqlite.py" ]; then
+    echo "🗄️ Initializing database"
+    sudo -u "$DEPLOY_USER" .venv/bin/python -m scripts.init_sqlite
     if [ -f "db.sqlite3" ]; then
       chown "$DEPLOY_USER:$DEPLOY_USER" "db.sqlite3"
       chmod 664 "db.sqlite3"
@@ -84,7 +80,6 @@ WorkingDirectory=${APP_WORKDIR}
 UMask=0002
 
 Environment=APP_SECRET_JSON=${APP_SECRET_PATH}
-Environment=DJANGO_SETTINGS_MODULE=trigger_engine.settings
 Environment=PYTHONPATH=${APP_WORKDIR}
 
 ExecStart=${APP_WORKDIR}/${START_CMD}

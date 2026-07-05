@@ -1,6 +1,5 @@
 # Dockerfile for python-dairy-hub-api
 # Assumes your app entrypoint is `main.py` with a FastAPI app named `app`.
-# Uses requirements.txt. If you use poetry/pyproject, replace dependency install steps.
 
 FROM python:3.11-slim
 
@@ -8,18 +7,21 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install build dependencies (only what pip might need)
+# Install build dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential gcc \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install Python dependencies
-# Make sure you have a requirements.txt at the project root.
-COPY requirements.txt /app/requirements.txt
-RUN pip install --upgrade pip \
-    && pip install --no-cache-dir -r /app/requirements.txt
+# Install uv for dependency management
+RUN pip install --no-cache-dir uv
+
+# Copy dependency files
+COPY pyproject.toml uv.lock /app/
+
+# Install dependencies using uv
+RUN uv sync --frozen --no-dev
 
 # Copy application code
 COPY . /app
@@ -33,4 +35,4 @@ USER appuser
 EXPOSE 8000
 
 # Default command - run with uvicorn. Adjust workers if needed.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

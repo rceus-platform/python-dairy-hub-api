@@ -1,0 +1,42 @@
+{
+  "python.defaultInterpreterPath": "application-source/.venv/bin/python",
+  "python.languageServer": "Pylance",
+  "python.analysis.extraPaths": [
+    "application-source"
+  ],
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  },
+  "terminal.integrated.env.osx": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "terminal.integrated.env.linux": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "terminal.integrated.env.windows": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/*.pyo": true,
+    "**/*.pyd": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/.DS_Store": true
+  },
+  "search.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    ".venv": true
+  },
+  "yaml.schemas": {
+    "https://json.schemastore.org/github-workflow.json": ".github/workflows/*.yml"
+  },
+  "snyk.advanced.autoSelectOrganization": true
+}

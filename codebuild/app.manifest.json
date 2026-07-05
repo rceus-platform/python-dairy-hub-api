@@ -1,7 +1,7 @@
 {
   "runtime": "python",
   "working_dir": "application-source",
-  "start_command": ".venv/bin/gunicorn trigger_engine.asgi:application -k uvicorn.workers.UvicornWorker --bind 127.0.0.1:8000",
+  "start_command": ".venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000",
   "port": 8000,
-  "domain": "trigger-engine.rceus.duckdns.org"
+  "domain": "dairy-hub-api.rceus.duckdns.org"
 }

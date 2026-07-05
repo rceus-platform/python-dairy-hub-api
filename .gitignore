@@ -1,6 +1,5 @@
 __pycache__/ 
-*.code 
-*.vscode 
+*.code
 *.idea 
 *local_env 
 *venv 
@@ -27,3 +26,15 @@ media/
 
 # OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Tooling
+.ruff_cache/
+.uv/
+.pytest_cache/
+.mypy_cache/

@@ -19,11 +19,8 @@ from tkinter import messagebox, ttk
 import requests
 from threading import Thread
 from pathlib import Path
-import sys
 import time
-import subprocess
 import os
-import signal
 
 # ============================================================================
 # CONFIGURATION - Modify these if needed
@@ -97,7 +94,7 @@ class AdminLoginApp:
                 if response.status_code == 200:
                     print("✓ API server is running")
                     return True
-            except:
+            except Exception:
                 pass
             
             time.sleep(0.5)
@@ -239,7 +236,7 @@ class AdminLoginApp:
             
             if response.status_code == 200:
                 data = response.json()
-                self.update_status(f"✓ Login successful!", "#27ae60")
+                self.update_status("✓ Login successful!", "#27ae60")
                 messagebox.showinfo(
                     "Login Successful",
                     f"Welcome {username}!\n\n{data.get('message', 'You have been logged in successfully.')}"
@@ -264,7 +261,7 @@ class AdminLoginApp:
             self.update_status("✗ Cannot connect to API server", "#e74c3c")
             messagebox.showerror(
                 "Connection Error",
-                f"Could not connect to API server.\n\nThe server should start automatically.\nIf the problem persists, check the console for errors."
+                "Could not connect to API server.\n\nThe server should start automatically.\nIf the problem persists, check the console for errors."
             )
         
         except requests.exceptions.Timeout:
@@ -309,7 +306,7 @@ def main():
         print(f"Note: Database may already be initialized ({str(e)[:50]})")
     
     root = tk.Tk()
-    app = AdminLoginApp(root)
+    _ = AdminLoginApp(root)
     
     try:
         root.mainloop()

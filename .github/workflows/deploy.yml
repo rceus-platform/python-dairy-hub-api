@@ -42,15 +42,14 @@ jobs:
 
                       WORKDIR=$(jq -r '.working_dir' "$MANIFEST")
                       APP_WORKDIR="$APP_DIR/$WORKDIR"
-                      VENV="$APP_WORKDIR/.venv"
 
-                      echo "📦 Installing dependencies"
-                      $VENV/bin/pip install -r "$APP_WORKDIR/requirements.txt"
+                      echo "📦 Syncing dependencies with uv"
+                      cd "$APP_WORKDIR"
+                      uv sync
 
-                      if [ -f "$APP_WORKDIR/manage.py" ]; then
-                        echo "🧠 Django detected"
-                        $VENV/bin/python "$APP_WORKDIR/manage.py" migrate --noinput
-                        $VENV/bin/python "$APP_WORKDIR/manage.py" collectstatic --noinput
+                      if [ -f "scripts/init_sqlite.py" ]; then
+                        echo "🗄️ Initializing database"
+                        .venv/bin/python -m scripts.init_sqlite
                       fi
 
                       echo "🔁 Restarting service"

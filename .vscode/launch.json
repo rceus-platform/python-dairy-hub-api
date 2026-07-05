@@ -1,0 +1,58 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "FastAPI: Uvicorn Server",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "python": "${workspaceFolder}/application-source/.venv/bin/python",
+            "args": [
+                "app.main:app",
+                "--reload",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8000"
+            ],
+            "jinja": true,
+            "justMyCode": true,
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/application-source",
+            "envFile": "${workspaceFolder}/application-source/.env",
+            "env": {
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONUNBUFFERED": "1"
+            }
+        },
+        {
+            "name": "FastAPI: Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "python": "${workspaceFolder}/application-source/.venv/bin/python",
+            "args": [
+                "-v",
+                "--tb=short"
+            ],
+            "justMyCode": true,
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/application-source",
+            "envFile": "${workspaceFolder}/application-source/.env",
+            "env": {
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONUNBUFFERED": "1"
+            }
+        },
+        {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "python": "${workspaceFolder}/application-source/.venv/bin/python",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/application-source",
+            "envFile": "${workspaceFolder}/application-source/.env"
+        }
+    ]
+}
