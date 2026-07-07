@@ -1,7 +1,5 @@
 """Customer management endpoints."""
 
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -47,7 +45,7 @@ def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_
     return customer_data
 
 
-@router.get("/", response_model=List[schemas.Customer])
+@router.get("/", response_model=list[schemas.Customer])
 def get_customers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """Get all customers"""
 

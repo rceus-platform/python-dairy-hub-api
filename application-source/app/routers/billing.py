@@ -1,7 +1,5 @@
 """Billing endpoints."""
 
-from typing import List
-
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -68,7 +66,7 @@ def create_bill(bill: schemas.BillCreate, db: Session = Depends(get_db)):
     return created
 
 
-@router.get("/", response_model=List[schemas.Bill])
+@router.get("/", response_model=list[schemas.Bill])
 def get_bills(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """Get all bills"""
     ensure_billing_table(db)

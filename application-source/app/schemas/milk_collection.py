@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 from enum import Enum
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -93,7 +93,7 @@ class DateRangeReport(BaseModel):
     avg_fat: float
     avg_snf: float
     total_amount: float
-    daily_summaries: List[DailyCollectionReport]
+    daily_summaries: list[DailyCollectionReport]
     shift_wise_summary: dict[str, ShiftCollectionSummary]
 
     model_config = ConfigDict(from_attributes=True)

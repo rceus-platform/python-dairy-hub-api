@@ -1,7 +1,7 @@
 """Milk rate management endpoints."""
 
 from datetime import date
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
@@ -77,7 +77,7 @@ def create_milk_rate(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-@router.get("/", response_model=List[schemas.MilkRate])
+@router.get("/", response_model=list[schemas.MilkRate])
 def get_milk_rates(
     for_date: Optional[date] = Query(None, alias="date"),
     db: Session = Depends(get_db),

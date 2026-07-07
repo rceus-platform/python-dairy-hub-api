@@ -2,7 +2,7 @@
 
 import json
 from datetime import date, datetime
-from typing import Any, List, Mapping, Optional
+from typing import Any, Mapping, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
@@ -132,7 +132,7 @@ def create_milk_collection(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-@router.get("/", response_model=List[schemas.MilkCollection])
+@router.get("/", response_model=list[schemas.MilkCollection])
 def get_milk_collections(
     skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 ):
@@ -154,7 +154,7 @@ def get_milk_collections(
     return result.fetchall()
 
 
-@router.get("/filter/", response_model=List[schemas.MilkCollection])
+@router.get("/filter/", response_model=list[schemas.MilkCollection])
 def filter_milk_collections(
     start_date: datetime = Query(None),
     end_date: datetime = Query(None),
@@ -200,7 +200,7 @@ def filter_milk_collections(
     return result.fetchall()
 
 
-@router.get("/farmer-summary/", response_model=List[schemas.FarmerCollectionSummary])
+@router.get("/farmer-summary/", response_model=list[schemas.FarmerCollectionSummary])
 def get_farmer_collection_summary(
     start_date: datetime = Query(None),
     end_date: datetime = Query(None),
@@ -274,7 +274,7 @@ def get_farmer_collection_summary(
     ]
 
 
-@router.get("/reports/daily/", response_model=List[schemas.DailyCollectionReport])
+@router.get("/reports/daily/", response_model=list[schemas.DailyCollectionReport])
 def get_daily_collection_report(
     report_date: date = Query(None, alias="date"), db: Session = Depends(get_db)
 ):
